@@ -1,22 +1,31 @@
 .DEFAULT_GOAL := help
 
 LOCAL_TEST_DATABASE_URL ?= postgres://wallet:local_wallet_password@localhost:5432/wallet?sslmode=disable
+API_URL ?= http://localhost:8080
+WALLET_ID ?= 11111111-1111-4111-8111-111111111111
+AMOUNT ?= 100
 
-.PHONY: help up down build logs test test-race db-up test-integration test-all benchmark
+.PHONY: help up down balance deposit withdraw build logs test test-race db-up test-integration test-all benchmark
 
 help:
-	@echo "make up                 Build and start the API and PostgreSQL"
-	@echo "make down               Stop the Compose services"
-	@echo "make test               Run the fast Go test suite"
-	@echo "make test-integration   Start PostgreSQL and run the concurrent HTTP test"
-	@echo "make test-all           Run fast and PostgreSQL integration tests"
-	@echo "make benchmark          Measure concurrent writes per second"
+	@echo "Main:       make up | make balance | make deposit AMOUNT=100 | make withdraw AMOUNT=50 | make down"
+	@echo "Auxiliary:  make build | make logs | make test | make test-race | make db-up"
+	@echo "            make test-integration | make test-all | make benchmark"
 
 up:
 	docker compose up --build
 
 down:
 	docker compose down
+
+balance:
+	curl -sS "$(API_URL)/api/v1/wallets/$(WALLET_ID)"
+
+deposit:
+	curl -sS -X POST "$(API_URL)/api/v1/wallet" -H "Content-Type: application/json" -d '{"walletId":"$(WALLET_ID)","operationType":"DEPOSIT","amount":$(AMOUNT)}'
+
+withdraw:
+	curl -sS -X POST "$(API_URL)/api/v1/wallet" -H "Content-Type: application/json" -d '{"walletId":"$(WALLET_ID)","operationType":"WITHDRAW","amount":$(AMOUNT)}'
 
 build:
 	docker compose build api
