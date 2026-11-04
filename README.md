@@ -56,27 +56,27 @@ curl http://localhost:8080/api/v1/wallets/11111111-1111-4111-8111-111111111111
 
 HTTP-обработчик проверяет запрос и передаёт его сервису. PostgreSQL-репозиторий меняет баланс одним условным `UPDATE`: снятие выполняется только при достаточном балансе, а пополнение — пока оно не переполнит `BIGINT`. Поэтому параллельные запросы к одной строке не теряют изменения и не уводят баланс в минус. Защита находится в базе, а не в локальном Go-мьютексе.
 
-## Тесты
+## Команды Makefile
 
-Быстрые unit-тесты:
+Если установлен GNU Make, после создания `config.env` команды запуска и проверок можно выполнять короткими целями:
 
 ```sh
-go test ./...
+make up
+make test
+make test-integration
+make test-all
+make benchmark
+make down
 ```
 
-PostgreSQL integration-тест отправляет по 1000 параллельных пополнений и списаний через HTTP и проверяет итоговый баланс. Он пропускается, если `TEST_DATABASE_URL` не задан. Compose публикует PostgreSQL только на loopback-порт `5432`, поэтому локально можно выполнить:
+`make up` собирает образ и запускает API с PostgreSQL. `make test` запускает быстрые тесты Go. `make test-integration` поднимает PostgreSQL и отправляет по 1000 параллельных пополнений и списаний через HTTP, затем проверяет баланс. `make test-all` выполняет оба набора.
 
-```powershell
-$env:TEST_DATABASE_URL = "postgres://wallet:local_wallet_password@localhost:5432/wallet?sslmode=disable"
-go test ./...
+`make benchmark` измеряет число успешных параллельных записей в секунду на текущем компьютере. Результат зависит от оборудования; benchmark помогает проверить целевые 1000 RPS в нужной среде.
+
+Compose публикует PostgreSQL только на loopback-порт `5432`. Настроить тестовую строку подключения можно так:
+
+```sh
+make test-integration LOCAL_TEST_DATABASE_URL="postgres://wallet:local_wallet_password@localhost:5432/wallet?sslmode=disable"
 ```
 
-Этот тест проверяет корректность при параллельной работе. Фактические 1000 RPS нужно оценивать отдельным нагрузочным запуском на целевом оборудовании.
-
-Для измерения пропускной способности на той же машине запустите benchmark:
-
-```powershell
-go test -run '^$' -bench BenchmarkConcurrentWalletWrites -benchtime=10s ./internal/repository/postgres
-```
-
-В выводе будет метрика `requests/s`; benchmark также требует заданный `TEST_DATABASE_URL`.
+На Windows GNU Make удобно запускать из Git Bash или WSL. Все команды также можно выполнить напрямую через `docker compose` и `go test`.

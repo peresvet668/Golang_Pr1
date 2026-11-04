@@ -8,32 +8,19 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:18.6-alpine3.24
-        env:
-          POSTGRES_USER: wallet
-          POSTGRES_PASSWORD: local_wallet_password
-          POSTGRES_DB: wallet
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U wallet -d wallet"
-          --health-interval 5s
-          --health-timeout 3s
-          --health-retries 10
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
         with:
           go-version: '1.27.3'
           cache: true
-      - name: Run tests with the race detector
-        run: go test -race ./...
-        env:
-          TEST_DATABASE_URL: postgres://wallet:local_wallet_password@localhost:5432/wallet?sslmode=disable
+      - name: Create local config
+        run: cp config.env.example config.env
+      - name: Run fast tests
+        run: make test
+      - name: Run concurrent PostgreSQL integration test
+        run: make test-integration
       - name: Validate Compose and build the API image
         run: |
-          cp config.env.example config.env
           docker compose config --quiet
           docker compose build api
