@@ -1,0 +1,9 @@
+.git
+.github
+.idea
+.vscode
+config.env
+.env
+*.log
+coverage.*
+*.out
